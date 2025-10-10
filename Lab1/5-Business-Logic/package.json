@@ -1,0 +1,23 @@
+{
+  "name": "5-business-logic",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "babel": "babel src --out-dir dist --presets=@babel/preset-env"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/cli": "^7.28.3",
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3",
+    "chai": "^6.2.0",
+    "mocha": "^11.7.4"
+  }
+}
