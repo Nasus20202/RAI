@@ -1,0 +1,36 @@
+@model Lab2.Web.Models.Account.ProfileViewModel
+@{
+    ViewData["Title"] = "Profile";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">User Profile</h2>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Username:</label>
+                    <p class="form-control-plaintext">@Model.Username</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Role:</label>
+                    <p class="form-control-plaintext">
+                        <span class="badge @(Model.Role == "Admin" ? "bg-danger" : "bg-primary")">
+                            @Model.Role
+                        </span>
+                    </p>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <a asp-controller="Bookings" asp-action="Index" class="btn btn-secondary">Back to Home</a>
+                    <form asp-action="Logout" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger w-100">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

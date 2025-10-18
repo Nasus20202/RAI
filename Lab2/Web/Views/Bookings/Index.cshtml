@@ -1,0 +1,357 @@
+@{
+    ViewData["Title"] = "My Bookings";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">
+        <i class="bi bi-calendar-check"></i> My Bookings
+    </h2>
+
+    <!-- Success/Error Messages -->
+    <div id="messageContainer"></div>
+
+    <!-- Create Booking Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-plus"></i> Create New Booking
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Booking Requirements:</strong> Minimum duration is <strong>15 minutes</strong>, maximum is <strong>3 hours</strong>.
+                    </div>
+                    <form id="createBookingForm">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="roomName" class="form-label">
+                                    <i class="bi bi-door-open"></i> Room *
+                                </label>
+                                <select id="roomName" class="form-select" required>
+                                    <option value="">-- Select a room --</option>
+                                    @foreach (var room in ViewBag.Rooms)
+                                    {
+                                        <option value="@room.Name">
+                                            @room.Name (Capacity: @room.Capacity)
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="startTime" class="form-label">
+                                    <i class="bi bi-clock"></i> Start Time *
+                                </label>
+                                <input type="datetime-local" 
+                                       id="startTime" 
+                                       class="form-control" 
+                                       required />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="endTime" class="form-label">
+                                    <i class="bi bi-clock-fill"></i> End Time *
+                                </label>
+                                <input type="datetime-local" 
+                                       id="endTime" 
+                                       class="form-control" 
+                                       required />
+                            </div>
+                            <div class="col-md-2 mb-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-check-circle"></i> Create
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Bookings List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-check"></i> My Active & Upcoming Bookings
+                    </h5>
+                    <a asp-action="ExportMyBookings" 
+                       class="btn btn-light btn-sm"
+                       data-bs-toggle="tooltip" 
+                       data-bs-placement="left" 
+                       title="Download your upcoming bookings as iCalendar (.ics) file to import into Google Calendar, Outlook, or other calendar apps">
+                        <i class="bi bi-download"></i> Export to Calendar
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div id="loadingSpinner" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading your bookings...</p>
+                    </div>
+                    <div id="bookingsList" style="display: none;">
+                        <!-- Bookings will be loaded here via JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // API Base URL
+        const API_BASE = '/api/bookings';
+
+        // Show message to user
+        function showMessage(message, type = 'success') {
+            const messageContainer = document.getElementById('messageContainer');
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            messageContainer.innerHTML = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = messageContainer.querySelector('.alert');
+                if (alert) {
+                    alert.classList.remove('show');
+                    setTimeout(() => alert.remove(), 150);
+                }
+            }, 5000);
+        }
+
+        // Load user bookings
+        async function loadBookings() {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const bookingsList = document.getElementById('bookingsList');
+
+            try {
+                loadingSpinner.style.display = 'block';
+                bookingsList.style.display = 'none';
+
+                const response = await fetch(`${API_BASE}/my`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load bookings');
+                }
+
+                const bookings = await response.json();
+                displayBookings(bookings);
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                showMessage('Failed to load bookings. Please refresh the page.', 'error');
+            } finally {
+                loadingSpinner.style.display = 'none';
+                bookingsList.style.display = 'block';
+            }
+        }
+
+        // Display bookings
+        function displayBookings(bookings) {
+            const bookingsList = document.getElementById('bookingsList');
+
+            // Filter for active and upcoming bookings
+            const activeBookings = bookings.filter(b => b.isActive || b.isUpcoming);
+
+            if (activeBookings.length === 0) {
+                bookingsList.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+                        <p class="mt-2">You don't have any active or upcoming bookings.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-hover">';
+            html += `
+                <thead class="table-light">
+                    <tr>
+                        <th>Room</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            activeBookings.forEach(booking => {
+                const startTime = new Date(booking.startTime).toLocaleString();
+                const endTime = new Date(booking.endTime).toLocaleString();
+                const status = booking.isActive 
+                    ? '<span class="badge bg-success">Active</span>' 
+                    : '<span class="badge bg-info">Upcoming</span>';
+
+                html += `
+                    <tr>
+                        <td><strong>${booking.roomName}</strong></td>
+                        <td>${startTime}</td>
+                        <td>${endTime}</td>
+                        <td>${status}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" 
+                                    onclick="cancelBooking('${booking.id}', '${booking.roomName}')">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            bookingsList.innerHTML = html;
+        }
+
+        // Create booking
+        document.getElementById('createBookingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const roomName = document.getElementById('roomName').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+
+            if (!roomName || !startTime || !endTime) {
+                showMessage('Please fill in all fields', 'error');
+                return;
+            }
+
+            // Client-side validation
+            const start = new Date(startTime);
+            const end = new Date(endTime);
+            const durationMinutes = (end - start) / (1000 * 60);
+            const durationHours = durationMinutes / 60;
+
+            if (start >= end) {
+                showMessage('Start time must be before end time.', 'error');
+                return;
+            }
+
+            if (start < new Date()) {
+                showMessage('Cannot create reservation in the past.', 'error');
+                return;
+            }
+
+            if (durationMinutes < 15) {
+                showMessage('Reservation duration must be at least 15 minutes.', 'error');
+                return;
+            }
+
+            if (durationHours > 3) {
+                showMessage('Reservation duration cannot exceed 3 hours.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        roomName,
+                        startTime,
+                        endTime
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create booking');
+                }
+
+                showMessage(`Booking created successfully for ${roomName}!`, 'success');
+                
+                // Reset form
+                document.getElementById('createBookingForm').reset();
+                
+                // Reload bookings
+                await loadBookings();
+            } catch (error) {
+                console.error('Error creating booking:', error);
+                showMessage(error.message, 'error');
+            }
+        });
+
+        // Cancel booking
+        async function cancelBooking(bookingId, roomName) {
+            if (!confirm(`Are you sure you want to cancel your booking for ${roomName}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/${bookingId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to cancel booking');
+                }
+
+                showMessage(`Booking for ${roomName} canceled successfully!`, 'success');
+                
+                // Reload bookings
+                await loadBookings();
+            } catch (error) {
+                console.error('Error canceling booking:', error);
+                showMessage(error.message, 'error');
+            }
+        }
+
+        // Set minimum datetime for inputs
+        function setMinDateTime() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            const minDateTime = now.toISOString().slice(0, 16);
+            
+            document.getElementById('startTime').min = minDateTime;
+            document.getElementById('endTime').min = minDateTime;
+
+            // Set default values
+            const defaultStart = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+            defaultStart.setMinutes(defaultStart.getMinutes() - defaultStart.getTimezoneOffset());
+            document.getElementById('startTime').value = defaultStart.toISOString().slice(0, 16);
+
+            const defaultEnd = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours from now
+            defaultEnd.setMinutes(defaultEnd.getMinutes() - defaultEnd.getTimezoneOffset());
+            document.getElementById('endTime').value = defaultEnd.toISOString().slice(0, 16);
+        }
+
+        // Auto-update end time when start time changes
+        document.getElementById('startTime').addEventListener('change', function() {
+            const startTime = new Date(this.value);
+            const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour
+            endTime.setMinutes(endTime.getMinutes() - endTime.getTimezoneOffset());
+            document.getElementById('endTime').value = endTime.toISOString().slice(0, 16);
+        });
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            setMinDateTime();
+            loadBookings();
+            
+            // Initialize Bootstrap tooltips
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+        });
+    </script>
+}

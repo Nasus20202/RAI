@@ -1,0 +1,124 @@
+@model Lab2.Web.Models.Reservation.CreateReservationViewModel
+@{
+    ViewData["Title"] = "Create Reservation";
+}
+
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">
+                    <i class="bi bi-calendar-plus"></i> Create New Reservation
+                </h2>
+                
+                @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i> @Model.ErrorMessage
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+
+                <form asp-action="CreateReservation" method="post">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="mb-3">
+                        <label asp-for="RoomName" class="form-label">
+                            <i class="bi bi-door-open"></i> Select Room
+                        </label>
+                        <select asp-for="RoomName" class="form-select">
+                            <option value="">-- Select a room --</option>
+                            @foreach (var room in Model.AvailableRooms)
+                            {
+                                <option value="@room.Name">
+                                    @room.Name (Capacity: @room.Capacity)
+                                    @if (!room.IsAvailable)
+                                    {
+                                        <text> - Currently Occupied</text>
+                                    }
+                                </option>
+                            }
+                        </select>
+                        <span asp-validation-for="RoomName" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="StartTime" class="form-label">
+                            <i class="bi bi-clock"></i> Start Time
+                        </label>
+                        <input asp-for="StartTime" 
+                               type="datetime-local" 
+                               class="form-control" 
+                               min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                        <span asp-validation-for="StartTime" class="text-danger"></span>
+                        <small class="form-text text-muted">Select when your reservation should start</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="EndTime" class="form-label">
+                            <i class="bi bi-clock-fill"></i> End Time
+                        </label>
+                        <input asp-for="EndTime" 
+                               type="datetime-local" 
+                               class="form-control" 
+                               min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                        <span asp-validation-for="EndTime" class="text-danger"></span>
+                        <small class="form-text text-muted">Select when your reservation should end</small>
+                    </div>
+
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Note:</strong> You can only have one active or upcoming reservation at a time.
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Create Reservation
+                        </button>
+                        <a asp-action="MyReservations" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to My Reservations
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-lightbulb"></i> Tips for Reservations
+                    </h5>
+                    <ul class="mb-0">
+                        <li>Make sure the start time is before the end time</li>
+                        <li>Reservations cannot be made in the past</li>
+                        <li>Check room availability before booking</li>
+                        <li>You can only have one active reservation at a time</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        // Set minimum datetime for inputs to current time
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        const minDateTime = now.toISOString().slice(0, 16);
+        
+        document.getElementById('StartTime').min = minDateTime;
+        document.getElementById('EndTime').min = minDateTime;
+        
+        // Auto-update end time when start time changes
+        document.getElementById('StartTime').addEventListener('change', function() {
+            const startTime = new Date(this.value);
+            const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour
+            endTime.setMinutes(endTime.getMinutes() - endTime.getTimezoneOffset());
+            document.getElementById('EndTime').value = endTime.toISOString().slice(0, 16);
+        });
+    </script>
+}

@@ -1,0 +1,29 @@
+.table td {
+  vertical-align: middle;
+}
+
+.table-success {
+  background-color: #28a745 !important;
+  color: white !important;
+  font-weight: bold;
+}
+
+.table-success:hover {
+  background-color: #218838 !important;
+  transform: scale(1.02);
+  transition: all 0.2s;
+}
+
+.table-danger {
+  background-color: #dc3545 !important;
+  color: white !important;
+  font-weight: 500;
+}
+
+.table-success small {
+  color: white !important;
+}
+
+.table-danger small {
+  color: white !important;
+}
